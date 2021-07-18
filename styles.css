@@ -20,7 +20,7 @@
 }
 
 .pressed {
-  background-image: radial-gradient(circle, rgba(50, 50, 50, 0.7) 0%, rgba(50, 50, 50, 0) 100%);
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.0) 100%);
 }
 
 .unpressed {
