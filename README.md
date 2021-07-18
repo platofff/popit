@@ -1,2 +1,4 @@
 # popit
-Pop It simulator
+Web Pop It simulator
+
+![](popit.png)
