@@ -11,6 +11,7 @@ const Finals = Object.freeze({
   WIN: 1,
   LOSE: 2
 })
+const touchSupported = 'ontouchstart' in document.documentElement
 const blackout = document.getElementById('blackout')
 const status = document.getElementById('status')
 const room = document.getElementById('room')
@@ -113,7 +114,7 @@ startButton.addEventListener('click', () => {
 })
 
 for (const [i, pop] of pops.entries()) {
-  pop.addEventListener('mousedown', () => {
+  pop.addEventListener(touchSupported ? 'touchstart' : 'mousedown', () => {
     if (game.move !== game.you)
       return
     if (!pop.classList.contains('pressed')) {
@@ -123,7 +124,7 @@ for (const [i, pop] of pops.entries()) {
       selectedY = Math.floor(i / 6)
     }
     if (!popit_event_listener) {
-      popit.addEventListener('mouseup', () => {
+      popit.addEventListener(touchSupported ? 'touchend' : 'mouseup', () => {
         const poped = []
         for (const [i, pop] of document.querySelectorAll('.pop').entries())
           if (pop.classList.contains('selected'))
@@ -138,7 +139,7 @@ for (const [i, pop] of pops.entries()) {
       popit_event_listener = true
     }
     if (!cancel_event_listener) {
-      cancel.addEventListener('mouseup', () => {
+      cancel.addEventListener(touchSupported ? 'touchend' : 'mouseup', () => {
         for (const pop of document.querySelectorAll('.selected')) {
           pop.classList.remove('selected')
           pop.classList.add('unpressed')
@@ -152,10 +153,8 @@ for (const [i, pop] of pops.entries()) {
       cancel_event_listener = true
     }
   })
-  pop.addEventListener('mouseover', () => {
-    if (game.move !== game.you)
-      return
-    if (!pop.classList.contains('pressed') && selectedX !== null && filledCount < 4) {
+  pop.addEventListener(touchSupported ? 'touchmove' : 'mouseover', () => {
+    if (game.move === game.you && !pop.classList.contains('selected') && !pop.classList.contains('pressed') && selectedX !== null && filledCount < 4) {
       const x = i % 6
       const y = Math.floor(i / 6)
       if (selectedX === x) {
