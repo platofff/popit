@@ -1,207 +1,176 @@
 'use strict'
-import express from 'express'
-import enableWs from 'express-ws'
-import Redis from 'ioredis'
-import { ReJSON } from 'redis-modules-sdk'
+const audio = [
+  new Audio('popit1.ogg'),
+  new Audio('popit2.ogg'),
+  new Audio('popit3.ogg'),
+  new Audio('popit4.ogg'),
+  new Audio('popit5.ogg')
+]
+const Finals = Object.freeze({
+  OPPONENT_DISCONNECTED: 0,
+  WIN: 1,
+  LOSE: 2
+})
+const touchSupported = 'ontouchstart' in document.documentElement
+const blackout = document.getElementById('blackout')
+const status = document.getElementById('status')
+const room = document.getElementById('room')
+const error = document.getElementById('error')
+const popit = document.getElementById('popit')
+const cancel = document.getElementById('cancel')
+const pops = document.querySelectorAll('.pop')
+let startButton = document.getElementById('start')
+let token, ws
+let game = {}
+let playedAudio = []
+let selectedX = null
+let selectedY = null
+let filledCount = 0
+let fillType = null
+let popit_event_listener = false
+let cancel_event_listener = false
 
-(async () => {
-  const Finals = Object.freeze({
-    OPPONENT_DISCONNECTED: 0,
-    WIN: 1,
-    LOSE: 2
-  })
-  const app = express()
 
-  app.use(express.static('www'))
+if (document.cookie.includes('token='))
+  token = document.cookie.replace('token=', '')
 
-  enableWs(app)
-  let redis_uri = new URL(process.env.REDIS_URI || 'redis://localhost')
-  const db = new Redis(redis_uri.href)
-  let cleanup = (async () => {
-    const keys = await db.keys('?????')
-    if (keys.length !== 0) {
-      await db.del(...keys)
-    }
-  })()
-  const json_db = new ReJSON(redis_uri.href)
-  let connect = json_db.connect()
-
-  let endpoints = {}
-
-  const checkAuth = async (token, ws) => {
-    if (!(await db.sismember('tokens', token))) {
-      if (ws !== undefined)
-        ws.send(JSON.stringify({ result: 'auth_error' }))
-      return false
-    }
-    return true
+startButton.addEventListener('click', () => {
+  ws = new WebSocket(document.location.href.replace('https://', 'wss://').replace('http://', 'ws://') + 'ws')
+  ws.onopen = () => {
+    const req = token === undefined ? { method: 'auth' } : { method: 'auth', token: token }
+    ws.send(JSON.stringify(req))
   }
-
-  await Promise.all([cleanup, connect])
-  connect = undefined
-  cleanup = undefined
-  redis_uri = undefined
-
-  app.ws('/ws', (ws) => {
-    ws.on('message', async (msg) => {
-      const reqData = JSON.parse(msg)
-      let game
-      switch (reqData.method) {
-        case 'update':
-          if (!(await checkAuth(reqData.token, ws))) break
-          let currentMove, members, poped, final
-          const popedXY = []
-          let valid = true
-          const parsePromises = [json_db.get(reqData.game, '.poped').then(r => poped = JSON.parse(r)),
-          json_db.get(reqData.game, '.move').then(r => currentMove = Number(r)),
-          json_db.get(reqData.game, '.members').then(r => members = JSON.parse(r))]
-          await parsePromises[0]
-          for (const [i, p] of reqData.poped.entries()) {
-            if (poped.includes(p)) {
-              valid = false
-              break
-            }
-            popedXY.push({ x: p % 6, y: Math.floor(p / 6) })
-            if (i > 0 && (Math.abs(popedXY[i - 1].x - popedXY[i].x) > 1 || Math.abs(popedXY[i - 1].y - popedXY[i].y) > 1)) {
-              valid = false
-              break
-            }
-          }
-          await Promise.all(parsePromises.slice(-2))
-          if (members[currentMove] !== reqData.token)
-            valid = false
-          if (!valid) {
-            ws.send(JSON.stringify({ move: currentMove }))
-            break
-          }
-          poped.push(...reqData.poped)
-          currentMove = Boolean(currentMove) ? 0 : 1
-          const setPromises = [json_db.set(reqData.game, '.poped', JSON.stringify(poped)),
-          json_db.set(reqData.game, '.move', currentMove)]
-          if (poped.length === 35)
-            final = Finals.LOSE
-          else if (poped.length === 36)
-            final = Finals.WIN
-          let c = 0
-          game = {
-            move: currentMove,
-            poped: poped,
-            final: final
-          }
-          for (const wsKey of Object.keys(endpoints)) {
-            if (c === 2)
-              break
-            if (members.includes(wsKey)) {
-              c++
-              if (endpoints[wsKey] == ws) {
-                if (game.final !== undefined)
-                  final = game.final === Finals.WIN ? Finals.LOSE : Finals.WIN
-                else
-                  final = undefined
-                endpoints[wsKey].send(JSON.stringify({ ...game, final: final }))
-              } else {
-                endpoints[wsKey].send(JSON.stringify(game))
-              }
-            }
-          }
-          await Promise.all(setPromises)
-          if (game.final !== undefined) {
-            await db.del(reqData.game)
-          }
-          break
-        case 'get_game':
-          if (!(await checkAuth(reqData.token, ws))) break
-          let gameToken
-          if (reqData.gameToken !== undefined) {
-            const fail = () => ws.send(JSON.stringify({ error: 'Invalid token!' }))
-            gameToken = reqData.gameToken
-            if (gameToken.length !== 5)
-              return fail()
-            game = await json_db.get(gameToken, '.')
-            if (game === null)
-              return fail()
-            game = JSON.parse(game)
-            game.members.push(reqData.token)
-            game.started = 1
-          } else {
-            const keys = (await db.keys('?????'))
-            if (keys) {
-              for (let [i, started] of await json_db.mget(keys, '.started')) {
-                started = Number(started)
-                if (started !== 0) {
-                  game = JSON.parse(await json_db.get(keys[i], '.'))
-                  if (game.members[0] === reqData.token)
-                    break
-                  gameToken = keys[i]
-                  game.members.push(reqData.token)
-                  game.started = 1
-                  break
-                }
-              }
-            }
-          }
-          if (gameToken === undefined) {
-            do
-              gameToken = Math.random().toString(36).slice(-5)
-            while (await json_db.objlen(gameToken) !== null)
-            game = { started: 0, members: [reqData.token], poped: [], move: 0 }
-          }
-          const setGame = json_db.set(gameToken, '.', JSON.stringify(game))
-          for (const wsKey of Object.keys(endpoints))
-            if (game.members.includes(wsKey))
-              endpoints[wsKey].send(JSON.stringify({
-                started: game.started,
-                poped: game.poped,
-                move: 0,
-                you: game.members.indexOf(wsKey),
-                token: gameToken
-              }))
-          await setGame
-          break
-        case 'auth':
-          const genNewToken = async () => {
-            let newToken
-            do {
-              newToken = ''
-              for (let i = 0; i < 2; i++)
-                newToken += Math.random().toString(36).substring(2)
-            } while (await db.sismember('tokens', newToken))
-            const addToken = db.sadd('tokens', newToken)
-            endpoints[newToken] = ws
-            ws.send(JSON.stringify({ result: newToken }))
-            await addToken
-          }
-          if (reqData.token !== undefined) {
-            if (!(await checkAuth(reqData.token))) {
-              genNewToken()
-            } else {
-              ws.send(JSON.stringify({ result: reqData.token }))
-              endpoints[reqData.token] = ws
-            }
-            return
-          }
-          genNewToken()
+  ws.onmessage = (event) => {
+    token = JSON.parse(event.data).result
+    if (token === 'auth_error') {
+      console.error('Auth error!')
+      ws.send(JSON.stringify({ method: 'auth' }))
+      return
+    }
+    document.cookie = `token=${token}; SameSite=Strict; Secure`
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.error) {
+        error.textContent = data.error
+        return
       }
-    })
-    ws.on('close', async () => {
-      for (const [key, e] of Object.entries(endpoints)) {
-        if (e == ws) {
-          const dbKeys = await db.keys('?????')
-          if (dbKeys) {
-            for (let [i, members] of (await json_db.mget(dbKeys, '.members')).entries()) {
-              members = JSON.parse(members)
-              if (members.includes(key)) {
-                members = members.filter(member => member !== key)
-                for (const member of members) {
-                  endpoints[member].send(JSON.stringify({ final: Finals.OPPONENT_DISCONNECTED }))
-                }
-                db.del(dbKeys[i])
-              }
-            }
-          }
+      game = { ...game, ...data }
+      console.log(`Game: ${JSON.stringify(game)}`)
+      if (blackout.children !== [])
+        blackout.innerHTML = `Waiting for the opponent...<br>Room id: ${game.token}`
+      if (game.started) {
+        blackout.style.display = 'none'
+        status.style.display = 'block'
+      }
+      if (game.move === game.you)
+        status.innerHTML = `Move: <span style="color:green">your</span>`
+      else
+        status.innerHTML = `Move: <span style="color:red">opponent's</span>`
+      if (game.final !== undefined) {
+        switch (game.final) {
+          case Finals.OPPONENT_DISCONNECTED:
+            blackout.innerHTML = 'Opponent disconected.'
+            break
+          case Finals.WIN:
+            blackout.innerHTML = 'You won!'
+            break
+          case Finals.LOSE:
+            blackout.innerHTML = 'You lost!'
+            break
+        }
+        blackout.style.display = 'block'
+        playedAudio = []
+        game = {}
+        for (const pop of document.querySelectorAll('.pop')) {
+          pop.classList.remove('pressed')
+          pop.classList.add('unpressed')
+        }
+        blackout.innerHTML += '<br><div id="start">Play again</div>'
+        startButton = document.getElementById('start')
+        startButton.addEventListener('click', () => {
+          ws.send(JSON.stringify({method: 'get_game', token: token}))
+        })
+        return
+      }
+      for (const [i, pop] of document.querySelectorAll('.pop').entries()) {
+        if (game.poped.includes(i)) {
+          pop.classList.remove('selected')
+          pop.classList.remove('unpressed')
+          pop.classList.add('pressed')
+          if (!playedAudio.includes(i))
+            audio[Math.floor(Math.random() * audio.length)].play()
+          playedAudio.push(i)
+        } else {
+          pop.classList.remove('selected')
+          pop.classList.add('unpressed')
         }
       }
-    })
+    }
+    if (room.value !== '')
+      ws.send(JSON.stringify({ method: 'get_game', token: token, gameToken: room.value }))
+    else
+      ws.send(JSON.stringify({ method: 'get_game', token: token }))
+  }
+})
+
+for (const [i, pop] of pops.entries()) {
+  pop.addEventListener(touchSupported ? 'touchstart' : 'mousedown', () => {
+    if (game.move !== game.you)
+      return
+    if (!pop.classList.contains('pressed')) {
+      pop.classList.remove('unpressed')
+      pop.classList.add('selected')
+      selectedX = i % 6
+      selectedY = Math.floor(i / 6)
+    }
+    if (!popit_event_listener) {
+      popit.addEventListener(touchSupported ? 'touchend' : 'mouseup', () => {
+        const poped = []
+        for (const [i, pop] of document.querySelectorAll('.pop').entries())
+          if (pop.classList.contains('selected'))
+            poped.push(i)
+        selectedX = null
+        selectedY = null
+        filledCount = 0
+        fillType = null
+        ws.send(JSON.stringify({ method: 'update', poped: poped, token: token, game: game.token }))
+        popit_event_listener = false
+      }, { once: true })
+      popit_event_listener = true
+    }
+    if (!cancel_event_listener) {
+      cancel.addEventListener(touchSupported ? 'touchend' : 'mouseup', () => {
+        for (const pop of document.querySelectorAll('.selected')) {
+          pop.classList.remove('selected')
+          pop.classList.add('unpressed')
+        }
+        selectedX = null
+        selectedY = null
+        filledCount = 0
+        fillType = null
+        cancel_event_listener = false
+      }, { once: true })
+      cancel_event_listener = true
+    }
   })
-  app.listen(process.env.PORT || 8080)
-})()
+  pop.addEventListener(touchSupported ? 'touchmove' : 'mouseover', () => {
+    if (game.move === game.you && !pop.classList.contains('selected') && !pop.classList.contains('pressed') && selectedX !== null && filledCount < 4) {
+      const x = i % 6
+      const y = Math.floor(i / 6)
+      if (selectedX === x) {
+        if (![null, 'x'].includes(fillType) || Math.abs(selectedY - y) > 1)
+          return
+        fillType = 'x'
+      } else if (selectedY === y) {
+        if (![null, 'y'].includes(fillType) || Math.abs(selectedX - x) > 1)
+          return
+        fillType = 'y'
+      } else return
+      filledCount++
+      selectedX = x
+      selectedY = y
+      pop.classList.remove('unpressed')
+      pop.classList.add('selected')
+    }
+  })
+}
