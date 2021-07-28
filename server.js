@@ -130,7 +130,7 @@ import { ReJSON } from 'redis-modules-sdk'
                 started = Number(started)
                 if (started !== 0) {
                   game = JSON.parse(await json_db.get(keys[i], '.'))
-                  if (game.members[0] === reqData.token)
+                  if (game === null || game.members[0] === reqData.token)
                     break
                   gameToken = keys[i]
                   game.members.push(reqData.token)
