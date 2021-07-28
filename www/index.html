@@ -5,6 +5,13 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <div id="blackout">
+      <input id="room" type="text" placeholder="Room token (leave empty to join random room)"></input>
+      <br>
+      <div id="error"></div>
+      <br>
+      <div id="start">Play</div>
+    </div>
     <div id="popit">
       <table cellspacing="1">
         <tr>
@@ -129,6 +136,8 @@
         </tr>
       </table>
     </div>
+    <div id="status"></div>
+    <div id="cancel">❌</div>
   </body>
   <footer>
     <script src="index.js"></script>

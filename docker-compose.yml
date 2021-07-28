@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  popit:
+    build: .
+    volumes_from:
+    - redis
+    environment:
+      REDIS_URI: unix:///tmp/redis.sock
+    ports:
+    - "8080:8080/tcp"
+    restart: always
+  redis:
+    image: redislabs/rejson:1.0.7
+    command: redis-server --loadmodule /usr/lib/redis/modules/rejson.so --unixsocket /tmp/redis.sock --unixsocketperm 666 --appendonly yes
+    volumes:
+    - /tmp
+    - redis-data:/data
+
+volumes:
+  redis-data:

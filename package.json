@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-ws": "^5.0.2",
+    "redis-modules-sdk": "^0.8.1"
+  },
+  "scripts": {
+    "server": "node server.js"
+  },
+  "type": "module",
+  "license": "MIT",
+  "description": "Pop! It online multiplayer game",
+  "author": "platofff <platofff@github.com>"
+}
