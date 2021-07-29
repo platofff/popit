@@ -6,7 +6,7 @@ services:
     volumes_from:
     - redis
     volumes:
-      /etc/letsencrypt/live/popit.librespeak.ru:/home/app/ssl:ro
+    - /etc/letsencrypt/live/popit.librespeak.ru:/home/app/ssl:ro
     environment:
       REDIS_URI: unix:///tmp/redis.sock
       NODE_ENV: production
