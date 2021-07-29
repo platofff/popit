@@ -3,6 +3,7 @@ import express from 'express'
 import enableWs from 'express-ws'
 import Redis from 'ioredis'
 import { ReJSON } from 'redis-modules-sdk'
+import { promises as fs } from 'fs'
 
 (async () => {
   const Finals = Object.freeze({
@@ -203,5 +204,13 @@ import { ReJSON } from 'redis-modules-sdk'
       }
     })
   })
-  app.listen(process.env.PORT || 8080)
+  if (process.env.SSL_PRIV && process.env.SSL_PUB) {
+    const keys = await Promise.allSettled([fs.readFile(process.env.SSL_PRIV), fs.readFile(process.env.SSL_PUB)])
+    https.createServer({
+      key: keys[0],
+      cert: keys[1]
+    }, app).listen(3000)
+  } else {
+    app.listen(3000)
+  }
 })()

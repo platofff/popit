@@ -5,10 +5,15 @@ services:
     build: .
     volumes_from:
     - redis
+    volumes:
+      /etc/letsencrypt/live/popit.librespeak.ru:/home/app/ssl:ro
     environment:
       REDIS_URI: unix:///tmp/redis.sock
+      NODE_ENV: production
+      SSL_PRIV: /home/app/ssl/privkey.pem
+      SSL_PUB: /home/app/ssl/fullchain.pem
     ports:
-    - "8080:8080/tcp"
+    - "8080:3000/tcp"
     restart: always
   redis:
     image: redislabs/rejson:1.0.7
