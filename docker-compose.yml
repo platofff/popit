@@ -13,7 +13,7 @@ services:
       SSL_PRIV: /home/app/ssl/privkey.pem
       SSL_PUB: /home/app/ssl/fullchain.pem
     ports:
-    - "8080:3000/tcp"
+    - "8443:3000/tcp"
     restart: always
   redis:
     image: redislabs/rejson:1.0.7
