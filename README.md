@@ -1,4 +1,5 @@
-# popit
-Web Pop It simulator
+# Pop! It Multiplayer
 
-![](popit.png)
+![](www/favicon.ico)
+
+Многопользовательская браузерная игра для двоих.
