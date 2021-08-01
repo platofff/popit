@@ -5,6 +5,7 @@ import Redis from 'ioredis'
 import { ReJSON } from 'redis-modules-sdk'
 import { promises as fs } from 'fs'
 import * as https from 'https'
+import * as http from 'http'
 
 (async () => {
   const Finals = Object.freeze({
@@ -204,18 +205,16 @@ import * as https from 'https'
       }
     })
   }
+  let server
   if (process.env.SSL_PRIV && process.env.SSL_PUB) {
     const keys = await Promise.all([fs.readFile(process.env.SSL_PRIV), fs.readFile(process.env.SSL_PUB)])
-    const server = https.createServer({
+    server = https.createServer({
       key: keys[0],
       cert: keys[1]
     }, app)
-    enableWs(app, server)
-    app.ws('/ws', wsHandler)
-    server.listen(3000)
-  } else {
-    enableWs(app)
-    app.ws('/ws', wsHandler)
-    app.listen(3000)
-  }
+  } else
+    server = http.createServer(app)
+  enableWs(app, server)
+  app.ws('/ws', wsHandler)
+  server.listen(3000)
 })()
