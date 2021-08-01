@@ -16,7 +16,6 @@ import * as https from 'https'
 
   app.use(express.static('www'))
 
-  enableWs(app)
   let redis_uri = new URL(process.env.REDIS_URI || 'redis://localhost')
   const db = new Redis(redis_uri.href)
   let cleanup = (async () => {
@@ -44,7 +43,7 @@ import * as https from 'https'
   cleanup = undefined
   redis_uri = undefined
 
-  app.ws('/ws', (ws) => {
+  const wsHandler = (ws) => {
     ws.on('message', async (msg) => {
       const reqData = JSON.parse(msg)
       let game
@@ -204,14 +203,19 @@ import * as https from 'https'
         }
       }
     })
-  })
+  }
   if (process.env.SSL_PRIV && process.env.SSL_PUB) {
     const keys = await Promise.all([fs.readFile(process.env.SSL_PRIV), fs.readFile(process.env.SSL_PUB)])
-    https.createServer({
+    const server = https.createServer({
       key: keys[0],
       cert: keys[1]
-    }, app).listen(3000)
+    }, app)
+    enableWs(app, server)
+    app.ws('/ws', wsHandler)
+    server.listen(3000)
   } else {
+    enableWs(app)
+    app.ws('/ws', wsHandler)
     app.listen(3000)
   }
 })()
