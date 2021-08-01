@@ -19,7 +19,7 @@ const popit = document.getElementById('popit')
 const cancel = document.getElementById('cancel')
 const pops = document.querySelectorAll('.pop')
 let startButton = document.getElementById('start')
-let token, ws
+let ws
 let game = {}
 let playedAudio = []
 let selectedX = null
@@ -29,10 +29,43 @@ let fillType = null
 let popit_event_listener = false
 let cancel_event_listener = false
 
+const getCookie = (name) => {
+  let matches = document.cookie.match(new RegExp(
+    "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+  ))
+  return matches ? decodeURIComponent(matches[1]) : undefined
+}
 
-if (document.cookie.includes('token='))
-  token = document.cookie.replace('token=', '')
+const setCookie = (name, value, options = {}) => {
+  options = {
+    path: '/',
+    ...options
+  }
+  if (options.expires instanceof Date) {
+    options.expires = options.expires.toUTCString()
+  }
+  let updatedCookie = encodeURIComponent(name) + "=" + encodeURIComponent(value)
+  for (let optionKey in options) {
+    updatedCookie += "; " + optionKey
+    let optionValue = options[optionKey]
+    if (optionValue !== true) {
+      updatedCookie += "=" + optionValue
+    }
+  }
+  document.cookie = updatedCookie
+}
 
+let token = getCookie('token')
+if (getCookie('noWelcome') === undefined) {
+  document.getElementById('close-welcome').addEventListener('click', () => {
+    document.getElementById('welcome-blackout').style.display = 'none'
+  })
+  document.getElementById('close-welcome-dont-show').addEventListener('click', () => {
+    setCookie('noWelcome', '1', {secure: true, samesite: 'lax'})
+    document.getElementById('welcome-blackout').style.display = 'none'
+  })
+  document.getElementById('welcome-blackout').style.display = 'block'
+}
 startButton.addEventListener('click', () => {
   ws = new WebSocket(document.location.href.replace('https://', 'wss://').replace('http://', 'ws://') + 'ws')
   ws.onopen = () => {
@@ -46,35 +79,35 @@ startButton.addEventListener('click', () => {
       ws.send(JSON.stringify({ method: 'auth' }))
       return
     }
-    document.cookie = `token=${token}; SameSite=Strict; Secure`
+    setCookie('token', token, {secure: true, samesite: 'lax'})
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
       if (data.error) {
-        error.textContent = data.error
+        error.innerHTML = data.error
         return
       }
       game = { ...game, ...data }
       console.log(`Game: ${JSON.stringify(game)}`)
       if (blackout.children !== [])
-        blackout.innerHTML = `Waiting for the opponent...<br>Room id: ${game.token}`
+        blackout.innerHTML = `Ищем соперника...<br>Токен комнаты: ${game.token}`
       if (game.started) {
         blackout.style.display = 'none'
         status.style.display = 'block'
       }
       if (game.move === game.you)
-        status.innerHTML = `Move: <span style="color:green">your</span>`
+        status.innerHTML = `Ход: <span style="color:green">твой</span>`
       else
-        status.innerHTML = `Move: <span style="color:red">opponent's</span>`
+        status.innerHTML = `Ход: <span style="color:red">противника</span>`
       if (game.final !== undefined) {
         switch (game.final) {
           case Finals.OPPONENT_DISCONNECTED:
-            blackout.innerHTML = 'Opponent disconected.'
+            blackout.innerHTML = 'Противник отключился.'
             break
           case Finals.WIN:
-            blackout.innerHTML = 'You won!'
+            blackout.innerHTML = 'Ты выиграл!'
             break
           case Finals.LOSE:
-            blackout.innerHTML = 'You lost!'
+            blackout.innerHTML = 'Ты проиграл!'
             break
         }
         blackout.style.display = 'block'

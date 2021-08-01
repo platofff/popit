@@ -115,7 +115,7 @@ import * as https from 'https'
           if (!(await checkAuth(reqData.token, ws))) break
           let gameToken
           if (reqData.gameToken !== undefined) {
-            const fail = () => ws.send(JSON.stringify({ error: 'Invalid token!' }))
+            const fail = () => ws.send(JSON.stringify({ error: '<span style="color:red">Неправильный токен!</span>' }))
             gameToken = reqData.gameToken
             if (gameToken.length !== 5)
               return fail()

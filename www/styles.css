@@ -29,16 +29,45 @@
   display: block;
 }
 
-#blackout {
+.blackout, #welcome {
   display: block;
   position: absolute;
+  text-align: center;
+  font-family: sans;
+}
+
+.blackout {
   width: 100vw;
   height: 100vh;
   background-color: rgba(0, 0, 0, 0.7);
-  text-align: center;
-  font-size: 10vh;
   color: white;
-  font-family: sans;
+  font-size: calc(((100vw - 30rem)/(80 - 30) * (1.5 - 1) + 1rem) * 2);
+}
+
+#welcome-blackout {
+  z-index: 1;
+  display: none;
+}
+
+#welcome {
+  width: 75vw;
+  margin-top: 5vh;
+  margin-left: 12vw;
+  background-color: white;
+  color: black;
+  border-radius: 10%;
+  z-index: 2;
+  overflow: auto;
+  padding-bottom: 4vh;
+}
+
+#welcome-text {
+  text-align: left;
+  margin: 2%;
+}
+
+#close-welcome, #close-welcome-dont-show, #room, #welcome {
+  font-size: calc((100vw - 30rem)/(80 - 30) * (1.5 - 1) + 1rem);
 }
 
 #start {
