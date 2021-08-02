@@ -185,7 +185,7 @@ for (const [i, pop] of pops.entries()) {
       cancel_event_listener = true
     }
   })
-  pop.addEventListener('pointerover', () => {
+  pop.addEventListener('pointerenter', () => {
     if (game.move === game.you && !pop.classList.contains('selected') && !pop.classList.contains('pressed') && selectedX !== null && filledCount < 4) {
       const x = i % 6
       const y = Math.floor(i / 6)
