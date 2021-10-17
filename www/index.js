@@ -26,7 +26,6 @@ let selectedX = null
 let selectedY = null
 let filledCount = 0
 let fillType = null
-let popit_event_listener = false
 let cancel_event_listener = false
 
 const getCookie = (name) => {
@@ -61,7 +60,7 @@ if (getCookie('noWelcome') === undefined) {
     document.getElementById('welcome-blackout').style.display = 'none'
   })
   document.getElementById('close-welcome-dont-show').addEventListener('click', () => {
-    setCookie('noWelcome', '1', {secure: true, samesite: 'lax'})
+    setCookie('noWelcome', '1', { secure: true, samesite: 'lax' })
     document.getElementById('welcome-blackout').style.display = 'none'
   })
   document.getElementById('welcome-blackout').style.display = 'block'
@@ -79,7 +78,7 @@ startButton.addEventListener('click', () => {
       ws.send(JSON.stringify({ method: 'auth' }))
       return
     }
-    setCookie('token', token, {secure: true, samesite: 'lax'})
+    setCookie('token', token, { secure: true, samesite: 'lax' })
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
       if (data.error) {
@@ -117,10 +116,10 @@ startButton.addEventListener('click', () => {
           pop.classList.remove('pressed')
           pop.classList.add('unpressed')
         }
-        blackout.innerHTML += '<br><div id="start">Play again</div>'
+        blackout.innerHTML += '<br><div id="start">Сыграть ещё раз</div>'
         startButton = document.getElementById('start')
         startButton.addEventListener('click', () => {
-          ws.send(JSON.stringify({method: 'get_game', token: token}))
+          ws.send(JSON.stringify({ method: 'get_game', token: token }))
         })
         return
       }
@@ -145,64 +144,77 @@ startButton.addEventListener('click', () => {
   }
 })
 
+const cancelHandler = (e) => {
+  for (const pop of document.querySelectorAll('.selected')) {
+    pop.classList.remove('selected')
+    pop.classList.add('unpressed')
+  }
+  selectedX = null
+  selectedY = null
+  filledCount = 0
+  fillType = null
+  cancel_event_listener = false
+  e.stopPropagation()
+}
+
 for (const [i, pop] of pops.entries()) {
-  pop.addEventListener('pointerdown', () => {
-    if (game.move !== game.you)
+  pop.ondragstart = () => false
+  pop.addEventListener('pointerdown', (e) => {
+    if (game.move !== game.you || !e.isPrimary || pop.classList.contains('pressed') || document.querySelector('.selected') !== null) {
       return
-    if (!pop.classList.contains('pressed')) {
-      pop.classList.remove('unpressed')
-      pop.classList.add('selected')
-      selectedX = i % 6
-      selectedY = Math.floor(i / 6)
     }
-    if (!popit_event_listener) {
-      popit.addEventListener('pointerup', () => {
-        const poped = []
-        for (const [i, pop] of document.querySelectorAll('.pop').entries())
-          if (pop.classList.contains('selected'))
-            poped.push(i)
-        selectedX = null
-        selectedY = null
-        filledCount = 0
-        fillType = null
-        ws.send(JSON.stringify({ method: 'update', poped: poped, token: token, game: game.token }))
-        popit_event_listener = false
-      }, { once: true })
-      popit_event_listener = true
-    }
+    pop.classList.remove('unpressed')
+    pop.classList.add('selected')
+    selectedX = i % 6
+    selectedY = Math.floor(i / 6)
+
     if (!cancel_event_listener) {
-      cancel.addEventListener('pointerup', () => {
-        for (const pop of document.querySelectorAll('.selected')) {
-          pop.classList.remove('selected')
-          pop.classList.add('unpressed')
-        }
-        selectedX = null
-        selectedY = null
-        filledCount = 0
-        fillType = null
-        cancel_event_listener = false
-      }, { once: true })
+      cancel.addEventListener('pointerover', cancelHandler, { once: true })
       cancel_event_listener = true
     }
   })
-  pop.addEventListener('pointerenter', () => {
-    if (game.move === game.you && !pop.classList.contains('selected') && !pop.classList.contains('pressed') && selectedX !== null && filledCount < 4) {
-      const x = i % 6
-      const y = Math.floor(i / 6)
-      if (selectedX === x) {
-        if (![null, 'x'].includes(fillType) || Math.abs(selectedY - y) > 1)
-          return
-        fillType = 'x'
-      } else if (selectedY === y) {
-        if (![null, 'y'].includes(fillType) || Math.abs(selectedX - x) > 1)
-          return
-        fillType = 'y'
-      } else return
-      filledCount++
-      selectedX = x
-      selectedY = y
-      pop.classList.remove('unpressed')
-      pop.classList.add('selected')
-    }
-  })
 }
+
+popit.addEventListener('pointermove', (e) => {
+  const pop = document.elementFromPoint(e.pageX, e.pageY)
+  if (pop.classList.contains('pop') && game.move === game.you && !pop.classList.contains('selected') && !pop.classList.contains('pressed') && selectedX !== null && filledCount < 4) {
+    const i = Number(pop.getAttribute('name'))
+    const x = i % 6
+    const y = Math.floor(i / 6)
+    if (selectedX === x) {
+      if (![null, 'x'].includes(fillType) || Math.abs(selectedY - y) > 1)
+        return
+      fillType = 'x'
+    } else if (selectedY === y) {
+      if (![null, 'y'].includes(fillType) || Math.abs(selectedX - x) > 1)
+        return
+      fillType = 'y'
+    } else return
+    filledCount++
+    selectedX = x
+    selectedY = y
+    pop.classList.remove('unpressed')
+    pop.classList.add('selected')
+  }
+  e.stopPropagation()
+})
+
+popit.addEventListener('pointerup', (e) => {
+  if (document.elementFromPoint(e.pageX, e.pageY).getAttribute('id') === 'cancel') {
+    return cancelHandler(e)
+  }
+  const poped = []
+  for (const [i, pop] of document.querySelectorAll('.pop').entries()) {
+    if (pop.classList.contains('selected')) {
+      poped.push(i)
+    }
+  }
+  if (poped.length === 0) { return }
+  selectedX = null
+  selectedY = null
+  filledCount = 0
+  fillType = null
+  ws.send(JSON.stringify({ method: 'update', poped: poped, token: token, game: game.token }))
+})
+
+popit.addEventListener('pointercancel', cancelHandler)
