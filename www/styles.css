@@ -1,3 +1,7 @@
+body {
+  font-family: sans-serif;
+}
+
 #popit {
   border-radius: 10%;
   border-color: rgba(0, 0, 0, 0.4);
@@ -11,7 +15,6 @@
 }
 
 #cancel, #status {
-  font-family: sans;
   text-align: center;
   font-size: 5vh;
   width: 40vh;
@@ -33,7 +36,6 @@
   display: block;
   position: absolute;
   text-align: center;
-  font-family: sans;
 }
 
 .blackout {
@@ -55,7 +57,7 @@
   margin-left: 12vw;
   background-color: white;
   color: black;
-  border-radius: 10%;
+  border-radius: 5px;
   z-index: 2;
   overflow: auto;
   padding-bottom: 4vh;
@@ -78,7 +80,6 @@
   padding-right: 0.3em;
   text-align: center;
   font-size: 1em;
-  font-family: sans;
   background-color: white;
   border-radius: 0.2em;
   color: black;

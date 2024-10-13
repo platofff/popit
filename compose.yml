@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   popit:
     build: .
@@ -10,13 +8,13 @@ services:
     environment:
       REDIS_URI: unix:///tmp/redis.sock
       NODE_ENV: production
-      SSL_PRIV: /home/app/ssl/live/popit.librespeak.ru/privkey.pem
-      SSL_PUB: /home/app/ssl/live/popit.librespeak.ru/fullchain.pem
+      SSL_PRIV: $SSL_PRIV
+      SSL_CERT: $SSL_CERT
     ports:
-    - "8443:3000/tcp"
+    - "$HTTPS_PORT:3000/tcp"
     restart: always
   redis:
-    image: redislabs/rejson:1.0.7
+    image: redislabs/rejson:2.8.4
     command: redis-server --loadmodule /usr/lib/redis/modules/rejson.so --unixsocket /tmp/redis.sock --unixsocketperm 666 --appendonly yes
     volumes:
     - /tmp

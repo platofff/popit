@@ -1,5 +1,5 @@
 # Pop! It Multiplayer
 
-![](www/favicon.ico)
+![](www/favicon.png)
 
 Многопользовательская браузерная игра для двоих.
