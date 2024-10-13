@@ -1,9 +1,13 @@
-FROM node:22-alpine
+FROM node:22-slim
+
 WORKDIR /home/app
 ADD package*.json /home/app/
-RUN npm i --omit=dev
+RUN npm install --omit=dev
 ADD . /home/app/
-RUN addgroup -S app --gid 1002 &&\
- adduser -S app -G app
-USER app
+
+# run as root to access /etc/letsencrypt
+#RUN groupadd -g 1002 app && \
+#    useradd -m -g app -u 1002 app
+#USER app
+
 ENTRYPOINT ["npm", "run", "server"]

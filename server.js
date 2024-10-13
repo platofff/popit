@@ -219,7 +219,7 @@ import * as http from 'http'
     })
   }
   let server
-  if (process.env.SSL_PRIV && process.env.SSL_PUB) {
+  if (process.env.SSL_PRIV && process.env.SSL_CERT) {
     const keys = await Promise.all([fs.readFile(process.env.SSL_PRIV), fs.readFile(process.env.SSL_CERT)])
     server = https.createServer({
       key: keys[0],

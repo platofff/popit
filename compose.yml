@@ -4,7 +4,7 @@ services:
     volumes_from:
     - redis
     volumes:
-    - /etc/letsencrypt:/home/app/ssl:ro
+    - /etc/letsencrypt:/etc/letsencrypt:ro
     environment:
       REDIS_URI: unix:///tmp/redis.sock
       NODE_ENV: production
